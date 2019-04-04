@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "download_arxiv"
-version = "0.1.0"
+version = "0.1.1"
 description = ""
 authors = ["Shun Kiyono <kiyono@ecei.tohoku.ac.jp>"]
 readme = "README.md"
