@@ -1,0 +1,3 @@
+[console_scripts]
+arxiv = download_arxiv:main
+
