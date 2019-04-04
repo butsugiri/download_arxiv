@@ -1,9 +1,0 @@
-README.md
-download_arxiv.py
-setup.py
-download_arxiv.egg-info/PKG-INFO
-download_arxiv.egg-info/SOURCES.txt
-download_arxiv.egg-info/dependency_links.txt
-download_arxiv.egg-info/entry_points.txt
-download_arxiv.egg-info/requires.txt
-download_arxiv.egg-info/top_level.txt
