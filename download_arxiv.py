@@ -13,6 +13,7 @@ from logzero import logger
     '-o',
     '--out',
     default='.',
+    type=click.Path(),
     help='path to save pdf'
 )
 def main(urls, out):
