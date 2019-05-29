@@ -40,11 +40,18 @@ def download(obj, slugify, dirpath='./'):
 @click.option(
     '-o',
     '--out',
-    default='.',
+    default=None,
     type=click.Path(),
     help='path to save pdf'
 )
 def main(urls, out):
+    if out is None:
+        if 'ARXIV_OUT' in os.environ:
+            out = os.environ['ARXIV_OUT']
+        else:
+            out = '.'
+    logger.info('Save PDFs to {}'.format(out))
+
     for url in urls:
         if url.endswith('.pdf'):
             paper_id = os.path.splitext(os.path.basename(url))[0]
