@@ -2,7 +2,9 @@
 import os
 import sys
 import time
+import urllib
 from urllib.request import urlretrieve
+from pybtex import database
 
 import arxiv
 import click
@@ -24,14 +26,44 @@ def reporthook(count, block_size, total_size):
     sys.stdout.flush()
 
 
-def download(obj, slugify, dirpath='./'):
-    if not obj.get('pdf_url', ''):
+def download_from_arxiv(url, dirpath='./'):
+    if url.endswith('.pdf'):
+        paper_id = os.path.splitext(os.path.basename(url))[0]
+    else:
+        paper_id = os.path.basename(url)
+    paper = arxiv.query(id_list=[paper_id])[0]
+
+    def custom_slugify(obj):
+        author_last_name = obj['authors'][0].strip().split(' ')[-1]
+        year = parse(obj['published']).year
+        title = obj['title'].strip().replace('\n', '')
+        logger.info('Download "{}" from "{}"'.format(title, obj['pdf_url']))
+        return '[{}+{}] {}'.format(author_last_name, year, title)
+
+    if not paper.get('pdf_url', ''):
         print("Object has no PDF URL.")
         return
     if dirpath[-1] != '/':
         dirpath += '/'
-    path = dirpath + slugify(obj) + '.pdf'
-    urlretrieve(obj['pdf_url'], path, reporthook=reporthook)
+
+    path = dirpath + custom_slugify(paper) + '.pdf'
+    urlretrieve(paper['pdf_url'], path, reporthook=reporthook)
+    return path
+
+
+def download_from_acl(url, dirpath='./'):
+    bib_url = url.strip('\n').rstrip('/') + '.bib'
+    bib = urllib.request.urlopen(bib_url).read().decode('utf-8')
+    bib_database = database.parse_string(bib, bib_format='bibtex')
+    author_lastname = bib_database.entries.values()[0].persons['author'][0].last()
+    year = bib_database.entries.values()[0].fields['year'].strip()
+    title = bib_database.entries.values()[0].fields['title'].strip()
+    out_name = '[{}+{}] {}.pdf'.format(author_lastname, year, title)
+
+    path = os.path.join(dirpath, out_name)
+    url = bib_database.entries.values()[0].fields['url'].strip()
+    logger.info('Download "{}" from "{}"'.format(title, url))
+    urlretrieve(url, path, reporthook=reporthook)
     return path
 
 
@@ -50,20 +82,12 @@ def main(urls, out):
             out = os.environ['ARXIV_OUT']
         else:
             out = '.'
-    logger.info('Save PDFs to {}'.format(out))
+    logger.info('Save PDF(s) to {}'.format(out))
 
     for url in urls:
-        if url.endswith('.pdf'):
-            paper_id = os.path.splitext(os.path.basename(url))[0]
+        if 'arxiv' in url:
+            download_from_arxiv(url, dirpath=out)
+        elif 'acl' in url:
+            download_from_acl(url, dirpath=out)
         else:
-            paper_id = os.path.basename(url)
-        paper = arxiv.query(id_list=[paper_id])[0]
-
-        def custom_slugify(obj):
-            author_last_name = obj['authors'][0].strip().split(' ')[-1]
-            year = parse(obj['published']).year
-            title = obj['title'].strip().replace('\n', '')
-            logger.info('Download "{}" from "{}"'.format(title, obj['pdf_url']))
-            return '[{}+{}] {}'.format(author_last_name, year, title)
-
-        download(paper, slugify=custom_slugify, dirpath=out)
+            raise NotImplementedError
