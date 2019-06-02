@@ -4,12 +4,12 @@ import sys
 import time
 import urllib
 from urllib.request import urlretrieve
-from pybtex import database
 
 import arxiv
 import click
 from dateutil.parser import parse
 from logzero import logger
+from pybtex import database
 
 
 def reporthook(count, block_size, total_size):
@@ -55,7 +55,7 @@ def download_from_acl(url, dirpath='./'):
     bib_url = url.strip('\n').rstrip('/') + '.bib'
     bib = urllib.request.urlopen(bib_url).read().decode('utf-8')
     bib_database = database.parse_string(bib, bib_format='bibtex')
-    author_lastname = bib_database.entries.values()[0].persons['author'][0].last()
+    author_lastname = bib_database.entries.values()[0].persons['author'][0].last()[0]
     year = bib_database.entries.values()[0].fields['year'].strip()
     title = bib_database.entries.values()[0].fields['title'].strip()
     out_name = '[{}+{}] {}.pdf'.format(author_lastname, year, title)
