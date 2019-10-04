@@ -52,6 +52,10 @@ def download_from_arxiv(url, dirpath='./'):
 
 
 def download_from_acl(url, dirpath='./'):
+    if url.endswith('.pdf'):
+        url = url[:-4]  # strip '.pdf'
+
+    # get filename
     bib_url = url.strip('\n').rstrip('/') + '.bib'
     bib = urllib.request.urlopen(bib_url).read().decode('utf-8')
     bib_database = database.parse_string(bib, bib_format='bibtex')
@@ -60,10 +64,11 @@ def download_from_acl(url, dirpath='./'):
     title = bib_database.entries.values()[0].fields['title'].strip()
     out_name = '[{}+{}] {}.pdf'.format(author_lastname, year, title)
 
+    # get authorname
     path = os.path.join(dirpath, out_name)
-    url = bib_database.entries.values()[0].fields['url'].strip()
-    logger.info('Download "{}" from "{}"'.format(title, url))
-    urlretrieve(url, path, reporthook=reporthook)
+    pdf_url = url.strip('\n').rstrip('/') + '.pdf'
+    logger.info('Download "{}" from "{}"'.format(title, pdf_url))
+    urlretrieve(pdf_url, path, reporthook=reporthook)
     return path
 
 
@@ -87,7 +92,7 @@ def main(urls, out):
     for url in urls:
         if 'arxiv' in url:
             download_from_arxiv(url, dirpath=out)
-        elif 'acl' in url:
+        elif 'aclweb' in url:
             download_from_acl(url, dirpath=out)
         else:
             raise NotImplementedError
