@@ -10,6 +10,7 @@ import click
 from dateutil.parser import parse
 from logzero import logger
 from pybtex import database
+from lxml import etree
 
 
 def reporthook(count, block_size, total_size):
@@ -26,7 +27,7 @@ def reporthook(count, block_size, total_size):
     sys.stdout.flush()
 
 
-def download_from_arxiv(url, dirpath='./'):
+def download_from_arxiv(url, dirpath='.'):
     if url.endswith('.pdf'):
         paper_id = os.path.splitext(os.path.basename(url))[0]
     else:
@@ -43,15 +44,13 @@ def download_from_arxiv(url, dirpath='./'):
     if not paper.get('pdf_url', ''):
         print("Object has no PDF URL.")
         return
-    if dirpath[-1] != '/':
-        dirpath += '/'
 
-    path = dirpath + custom_slugify(paper) + '.pdf'
+    path = os.path.join(dirpath, custom_slugify(paper) + '.pdf')
     urlretrieve(paper['pdf_url'], path, reporthook=reporthook)
     return path
 
 
-def download_from_acl(url, dirpath='./'):
+def download_from_acl(url, dirpath='.'):
     if url.endswith('.pdf'):
         url = url[:-4]  # strip '.pdf'
 
@@ -62,11 +61,31 @@ def download_from_acl(url, dirpath='./'):
     author_lastname = bib_database.entries.values()[0].persons['author'][0].last()[0]
     year = bib_database.entries.values()[0].fields['year'].strip()
     title = bib_database.entries.values()[0].fields['title'].strip()
-    out_name = '[{}+{}] {}.pdf'.format(author_lastname, year, title)
+    out_name = '[{}+{}] {}.pdf'.format(author_lastname, year, title).replace('{', '').replace('}', '')
 
     # get authorname
     path = os.path.join(dirpath, out_name)
     pdf_url = url.strip('\n').rstrip('/') + '.pdf'
+    logger.info('Download "{}" from "{}"'.format(title, pdf_url))
+    urlretrieve(pdf_url, path, reporthook=reporthook)
+    return path
+
+
+def download_from_openreview(url, dirpath='.'):
+    url = url.rstrip('\n')
+    if '/pdf?' in url:
+        url = url.replace('/pdf?', '/forum?')
+    page_source = urllib.request.urlopen(url).read().decode('utf-8')
+    xml = etree.fromstring(page_source, parser=etree.HTMLParser())
+    bib = xml.xpath('//a[@class="action-bibtex-modal"]/@data-bibtex')[0]
+    bib_database = database.parse_string(bib, bib_format='bibtex')
+    author_lastname = bib_database.entries.values()[0].persons['author'][0].last()[0]
+    year = bib_database.entries.values()[0].fields['year'].strip()
+    title = bib_database.entries.values()[0].fields['title'].strip()
+    out_name = '[{}+{}] {}.pdf'.format(author_lastname, year, title).replace('{', '').replace('}', '')
+
+    path = os.path.join(dirpath, out_name)
+    pdf_url = url.replace('/forum?', '/pdf?')
     logger.info('Download "{}" from "{}"'.format(title, pdf_url))
     urlretrieve(pdf_url, path, reporthook=reporthook)
     return path
@@ -94,5 +113,7 @@ def main(urls, out):
             download_from_arxiv(url, dirpath=out)
         elif 'aclweb' in url:
             download_from_acl(url, dirpath=out)
+        elif 'openreview' in url:
+            download_from_openreview(url, dirpath=out)
         else:
             raise NotImplementedError
